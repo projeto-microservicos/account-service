@@ -50,9 +50,9 @@ curl -i localhost:8083/accounts/health-check
 [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 
 - **verify** (todo push/PR): `mvn verify`, build da imagem, validação do Compose.
-- **deploy** (push em `main`): build `linux/amd64` → push no ECR `account-service` → `kubectl apply` no EKS pelo **digest** → espera o rollout. Só roda quando a variável da organização `AWS_ROLE_ARN` existe; a autenticação é por OIDC (sem chave AWS no GitHub).
+- **deploy** (push em `main`): build `linux/amd64` → push no ECR `account-service` → `kubectl apply` no EKS pelo **digest** → espera o rollout. Só roda quando a variável de repositório `AWS_ROLE_ARN` existe; a autenticação é por OIDC (sem chave AWS no GitHub).
 
-Variáveis da organização usadas: `AWS_ROLE_ARN`, `AWS_REGION` (`us-east-2`), `EKS_CLUSTER_NAME` (`eks-store`), `K8S_NAMESPACE` (`store`).
+Variáveis do repositório (Settings → Secrets and variables → Actions → Variables): `AWS_ROLE_ARN`, `AWS_REGION` (`us-east-2`), `EKS_CLUSTER_NAME` (`eks-store`), `K8S_NAMESPACE` (`store`).
 
 ### Preparação única no cluster
 
