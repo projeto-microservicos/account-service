@@ -2,16 +2,11 @@
 
 Microsserviço de contas (Java 25 / Spring Boot 4.1). Dono do schema `accounts` no PostgreSQL. Serviço interno: só o `gateway-service` fica exposto; o `auth-service` usa `POST /accounts/login` para validar credenciais.
 
-## Estado: boilerplate
+## Estado da implementação local
 
-| Pronto | Seu (`TODO(account)`) |
-|---|---|
-| Rotas HTTP, status, `Location`, validação dos DTOs | Regras de negócio em [`AccountService`](src/main/java/store/account/AccountService.java) |
-| Tabela + migração Flyway, entidade JPA, repositório | Política de senha, e-mail duplicado (409), login sem revelar e-mails (401) |
-| BCrypt configurado (`PasswordEncoder`) | Decidir se `GET /accounts` (lista todas) deve existir |
-| Actuator, Prometheus, OpenAPI, Docker, Compose, k8s, CI/CD | |
+Cadastro, consultas, exclusão e login implementados em `AccountService`. E-mails são normalizados, duplicados retornam 409 e senhas usam BCrypt (mínimo 8 caracteres, máximo 72 bytes). Os testes de contrato estão ativos. As rotas `/accounts/**` ficam internas no gateway; clientes consultam `/auth/me`.
 
-Enquanto não implementados, os métodos respondem **501 Not Implemented**. Os testes em [`AccountContractTest`](src/test/java/store/account/AccountContractTest.java) descrevem o comportamento esperado e estão com `@Disabled`: remova a anotação de cada um conforme implementar.
+A validação integrada usa o Compose da raiz do agregador. Essa alteração local ainda precisa ser publicada no repositório do serviço antes de atualizar o gitlink.
 
 ## Contrato HTTP
 
@@ -74,3 +69,5 @@ O banco `store` precisa existir; o Flyway cria o schema e a tabela.
 ## Uso de IA
 
 O boilerplate deste repositório (estrutura, configuração, camada HTTP, persistência, testes de contrato desabilitados, Docker/k8s/CI) foi gerado com assistência de IA (Claude) e revisado pela equipe. As regras de negócio marcadas `TODO(account)` são implementadas pela equipe. Registre aqui o que cada integrante fez.
+
+A implementação funcional e a ativação dos testes nesta revisão foram feitas com assistência do Codex em 16/11/2026. As referências a TODO no histórico de geração acima descrevem o boilerplate original.

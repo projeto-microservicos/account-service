@@ -1,6 +1,12 @@
 package store.account;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -11,64 +17,73 @@ import store.account.api.AccountOut;
 import store.account.api.LoginIn;
 
 /**
- * Business rules for accounts. The HTTP layer (AccountResource) and persistence
- * (AccountModel, AccountRepository, Flyway) are ready; every method below is yours.
- *
- * <p>Until implemented, each method answers 501 Not Implemented. The disabled tests in
- * AccountContractTest describe the expected behavior: enable them one by one.
+ * Account persistence and credential verification; exposed internally through auth.
  */
 @Service
 public class AccountService {
 
     private final AccountRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final String dummyHash;
 
     public AccountService(AccountRepository repository, PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     @Transactional
     public AccountOut create(AccountIn in) {
-        // TODO(account): implement registration.
-        //  1. Normalize the e-mail (trim + lowercase) before checking or saving it.
-        //  2. Enforce your password policy (e.g. minimum length) -> 400.
-        //  3. E-mail already registered -> 409 CONFLICT.
-        //  4. Hash with passwordEncoder.encode(...). Never store or log the plain password.
-        //  5. Save new AccountModel(UUID.randomUUID().toString(), ..., OffsetDateTime.now(ZoneOffset.UTC)).
-        throw todo("create account");
+        if (in.password().length() < 8 || in.password().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must have at least 8 characters and at most 72 bytes");
+        }
+        String email = normalize(in.email());
+        if (repository.existsByEmail(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+        }
+        var model = new AccountModel(UUID.randomUUID().toString(), in.name().trim(), email,
+            passwordEncoder.encode(in.password()), OffsetDateTime.now(ZoneOffset.UTC));
+        try {
+            return repository.saveAndFlush(model).toOut();
+        } catch (DataIntegrityViolationException error) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+        }
     }
 
     @Transactional(readOnly = true)
     public List<AccountOut> findAll() {
-        // TODO(account): return every account as AccountOut.
-        //  Decide whether this listing should exist outside the cluster (privacy).
-        throw todo("list accounts");
+        return repository.findAll().stream().map(AccountModel::toOut).toList();
     }
 
     @Transactional(readOnly = true)
     public AccountOut findById(String id) {
-        // TODO(account): repository.findById(id) -> 404 NOT_FOUND when absent.
-        throw todo("find account by id");
+        return find(id).toOut();
     }
 
     @Transactional
     public void delete(String id) {
-        // TODO(account): delete the account; decide between 404 or idempotent 204 when absent.
-        throw todo("delete account");
+        repository.delete(find(id));
     }
 
     @Transactional(readOnly = true)
     public AccountOut login(LoginIn in) {
-        // TODO(account): validate credentials for auth-service.
-        //  - Look up by the normalized e-mail and use passwordEncoder.matches(raw, hash).
-        //  - Unknown e-mail and wrong password must both answer the same 401 UNAUTHORIZED,
-        //    so the response never reveals which e-mails are registered.
-        throw todo("check credentials");
+        var account = repository.findByEmail(normalize(in.email()));
+        String hash = account.map(AccountModel::getPasswordHash).orElse(dummyHash);
+        boolean matches = in.password().getBytes(StandardCharsets.UTF_8).length <= 72
+            && passwordEncoder.matches(in.password(), hash);
+        if (!matches || account.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
+        return account.get().toOut();
     }
 
-    private static ResponseStatusException todo(String what) {
-        return new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "TODO: " + what);
+    private AccountModel find(String id) {
+        return repository.findById(id).orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+    }
+
+    private static String normalize(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
 }

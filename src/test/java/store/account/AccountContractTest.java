@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.UUID;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,9 +15,7 @@ import store.account.api.AccountOut;
 import store.account.api.LoginIn;
 
 /**
- * Executable specification of AccountService. Remove @Disabled from each test as you
- * implement the matching TODO(account) and adjust the expectations if you decide otherwise.
- */
+ * Account API contract, including password hashing and duplicate registrations. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
     "management.server.port=0",
     "spring.datasource.url=jdbc:h2:mem:accounts-contract;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
@@ -39,7 +36,6 @@ class AccountContractTest {
     }
 
     @Test
-    @Disabled("TODO(account): implement AccountService.create")
     void createReturns201WithLocationAndStoresOnlyAHash() {
         var response = api().post().uri("/accounts")
             .body(new AccountIn("Ana", email(), "s3cret-pass"))
@@ -53,7 +49,6 @@ class AccountContractTest {
     }
 
     @Test
-    @Disabled("TODO(account): implement AccountService.create")
     void duplicateEmailIsRejectedEvenWithDifferentCase() {
         var email = email();
         create(email, "s3cret-pass");
@@ -62,7 +57,6 @@ class AccountContractTest {
     }
 
     @Test
-    @Disabled("TODO(account): implement AccountService.login")
     void loginReturnsTheAccountOnlyForTheRightPassword() {
         var email = email();
         var created = create(email, "s3cret-pass");
@@ -80,7 +74,6 @@ class AccountContractTest {
     }
 
     @Test
-    @Disabled("TODO(account): implement AccountService.findById and delete")
     void findAndDeleteById() {
         var created = create(email(), "s3cret-pass");
         assertThat(api().get().uri("/accounts/{id}", created.id()).retrieve().body(AccountOut.class))
