@@ -24,7 +24,7 @@ Enquanto não implementados, os métodos respondem **501 Not Implemented**. Os t
 | `POST /accounts/login` | 200 com a conta; credenciais erradas 401. **Interno** (o gateway devolve 404) |
 | `GET /accounts/health-check` | 200 |
 
-Swagger em `/swagger-ui/index.html`. Saúde e métricas na porta privada 9091 (`/actuator/health`, `/actuator/prometheus`).
+Swagger em `/swagger-ui/index.html`. As probes de startup e liveness do Kubernetes chamam `GET /accounts/health-check`, como pede o `Overview.md`. A readiness e as métricas ficam na porta privada 9091 (`/actuator/health/readiness`, `/actuator/prometheus`).
 
 ## Rodar
 
