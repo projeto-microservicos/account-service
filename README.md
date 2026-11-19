@@ -2,24 +2,27 @@
 
 Microsserviço de contas (Java 25 / Spring Boot 4.1). Dono do schema `accounts` no PostgreSQL. Serviço interno: só o `gateway-service` fica exposto; o `auth-service` usa `POST /accounts/login` para validar credenciais.
 
-## Estado da implementação local
+## Estado: implementado (17/11/2026)
 
-Cadastro, consultas, exclusão e login implementados em `AccountService`. E-mails são normalizados, duplicados retornam 409 e senhas usam BCrypt (mínimo 8 caracteres, máximo 72 bytes). Os testes de contrato estão ativos. As rotas `/accounts/**` ficam internas no gateway; clientes consultam `/auth/me`.
+- **E-mail** normalizado (trim e minúsculas): o `UNIQUE` da tabela barra duplicatas em qualquer caixa, inclusive em cadastros simultâneos (409).
+- **Senha** com no mínimo 8 caracteres e no máximo 72 bytes UTF-8, o limite do BCrypt (400). Só o hash BCrypt é guardado.
+- **Login:** o mesmo 401 para e-mail desconhecido e senha errada, com tempo parecido nos dois casos (há um BCrypt de mentira), para não revelar quais e-mails existem.
+- **Dono da conta:** pelo gateway, o `id-account` sempre chega, e a pessoa só lê e apaga a própria conta; a de outra pessoa dá 404, como no order. `GET /accounts` devolve só a própria conta. Sem o header, só chamadas de dentro do cluster (o auth) veem qualquer conta.
 
-A validação integrada usa o Compose da raiz do agregador. Essa alteração local ainda precisa ser publicada no repositório do serviço antes de atualizar o gitlink.
+[`AccountContractTest`](src/test/java/store/account/AccountContractTest.java): 8 testes, mais 5 no `AccountSmokeTest`.
 
 ## Contrato HTTP
 
 | Método e caminho | Resultado |
 |---|---|
-| `POST /accounts` | 201 + `Location`; corpo `{"name","email","password"}` → `{"id","name","email"}`; inválido 400; e-mail repetido 409 |
-| `GET /accounts` | 200; lista de contas |
-| `GET /accounts/{id}` | 200; inexistente 404 |
-| `DELETE /accounts/{id}` | 204 |
+| `POST /accounts` | 201 + `Location`; corpo `{"name","email","password"}` → `{"id","name","email"}`; inválido ou senha fora da política 400; e-mail repetido 409 |
+| `GET /accounts` | 200; pelo gateway, só a própria conta; dentro do cluster, todas |
+| `GET /accounts/{id}` | 200; inexistente ou de outra pessoa 404 |
+| `DELETE /accounts/{id}` | 204; inexistente ou de outra pessoa 404 |
 | `POST /accounts/login` | 200 com a conta; credenciais erradas 401. **Interno** (o gateway devolve 404) |
 | `GET /accounts/health-check` | 200 |
 
-Swagger em `/swagger-ui/index.html`. Saúde e métricas na porta privada 9091 (`/actuator/health`, `/actuator/prometheus`).
+Swagger em `/swagger-ui/index.html`. As probes de startup e liveness do Kubernetes chamam `GET /accounts/health-check`, como pede o `Overview.md`. A readiness e as métricas ficam na porta privada 9091 (`/actuator/health/readiness`, `/actuator/prometheus`).
 
 ## Rodar
 
@@ -68,6 +71,4 @@ O banco `store` precisa existir; o Flyway cria o schema e a tabela.
 
 ## Uso de IA
 
-O boilerplate deste repositório (estrutura, configuração, camada HTTP, persistência, testes de contrato desabilitados, Docker/k8s/CI) foi gerado com assistência de IA (Claude) e revisado pela equipe. As regras de negócio marcadas `TODO(account)` são implementadas pela equipe. Registre aqui o que cada integrante fez.
-
-A implementação funcional e a ativação dos testes nesta revisão foram feitas com assistência do Codex em 16/11/2026. As referências a TODO no histórico de geração acima descrevem o boilerplate original.
+O boilerplate deste repositório (estrutura, configuração, camada HTTP, persistência, testes de contrato desabilitados, Docker/k8s/CI) foi gerado com assistência de IA (Claude) e revisado pela equipe. As regras de negócio (`AccountService`), a regra de dono da conta e os testes correspondentes foram implementados por decisão do João (D-01, 17/11/2026), escritas pelo agente do João (Claude) e revisadas pelo João antes do commit.
